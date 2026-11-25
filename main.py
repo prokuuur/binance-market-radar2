@@ -1,12 +1,10 @@
 import requests
 
 BASE_URL = "https://fapi.binance.com"
-
 def main():
 print("=" * 35)
 print("BINANCE MARKET RADAR 2.0")
 print("=" * 35)
-
 try:
     response = requests.get(
         BASE_URL + "/fapi/v1/ping",
@@ -23,7 +21,6 @@ try:
     print("BINANCE CONNECTION: OK")
     print("SERVER TIME:", server.json()["serverTime"])
     print("SYSTEM INITIALIZED SUCCESSFULLY")
-
 except requests.RequestException as error:
     print("CONNECTION ERROR:", error)
 if name == "main":
