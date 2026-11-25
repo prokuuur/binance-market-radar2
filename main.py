@@ -3,20 +3,14 @@ import requests
 URL = "https://fapi.binance.com"
 
 def main():
+    data = requests.get(URL + "/fapi/v1/ticker/24hr").json()
+    coins = [x for x in data if x["symbol"].endswith("USDT")]
+
+    coins.sort(key=lambda x: abs(float(x["priceChangePercent"])), reverse=True)
+
     print("BINANCE MARKET RADAR 2.0")
-
-    try:
-        r = requests.get(URL + "/fapi/v1/ping", timeout=10)
-        r.raise_for_status()
-
-        t = requests.get(URL + "/fapi/v1/time", timeout=10)
-        t.raise_for_status()
-
-        print("BINANCE: CONNECTED")
-        print("SERVER TIME:", t.json()["serverTime"])
-
-    except requests.RequestException as e:
-        print("ERROR:", e)
+    for coin in coins[:20]:
+        print(coin["symbol"], coin["priceChangePercent"] + "%")
 
 if __name__ == "__main__":
     main()
