@@ -3,29 +3,31 @@ import requests
 
 BASE = "https://data-api.binance.vision"
 
-print("BINANCE RADAR 2.0")
-print("MARKET UNIVERSE TEST")
+# Stablecoins, fiat and tokenized stock tickers
+EXCLUDED_BASES = {
+    "USDT", "USDC", "BUSD", "TUSD", "FDUSD",
+    "USDP", "DAI", "USDE", "USD1", "PYUSD",
+    "EUR", "GBP", "AUD", "BRL", "TRY",
+    "PLN", "UAH", "RUB", "ZAR", "NGN",
+    "BIDR", "IDRT", "USTC", "UST",
+    "AAPL", "TSLA", "NVDA", "MSFT",
+    "AMZN", "GOOGL", "META", "COIN",
+    "MSTR", "CRCL", "HOOD", "INTC",
+    "QQQ", "SPY", "MARA", "SOUN"
+}
 
-try:
+def get_crypto_universe():
+    print("Loading Binance markets...")
+
     info = requests.get(
         BASE + "/api/v3/exchangeInfo",
         timeout=20
     )
     info.raise_for_status()
 
-    symbols = [
-        s["symbol"]
-        for s in info.json()["symbols"]
-        if s.get("status") == "TRADING"
-        and s.get("quoteAsset") == "USDT"
-        and s.get("isSpotTradingAllowed", False)
-    ]
-
-    print("AVAILABLE USDT PAIRS:", len(symbols))
-
     ticker = requests.get(
         BASE + "/api/v3/ticker/24hr",
-        timeout=20
+        timeout=30
     )
     ticker.raise_for_status()
 
@@ -34,18 +36,62 @@ try:
         for item in ticker.json()
     }
 
-    ranked = sorted(
-        [s for s in symbols if s in volumes],
-        key=lambda s: volumes[s],
+    markets = []
+
+    for item in info.json()["symbols"]:
+        base = item["baseAsset"]
+        symbol = item["symbol"]
+
+        if item["status"] != "TRADING":
+            continue
+
+        if item["quoteAsset"] != "USDT":
+            continue
+
+        if not item.get("isSpotTradingAllowed", False):
+            continue
+
+        if base in EXCLUDED_BASES:
+            continue
+
+        if symbol not in volumes:
+            continue
+
+        markets.append({
+            "symbol": symbol,
+            "volume": volumes[symbol]
+        })
+
+    markets.sort(
+        key=lambda x: x["volume"],
         reverse=True
     )
 
-    print("\nTOP 20 BY VOLUME")
+    return markets
 
-    for symbol in ranked[:20]:
-        print(symbol, volumes[symbol], "USDT")
 
-except Exception as error:
-    print("ERROR:", error)
+def main():
+    print("\nBINANCE MARKET RADAR 2.0")
+    print("=" * 40)
 
-print("\nTEST FINISHED")
+    try:
+        markets = get_crypto_universe()
+
+        print("CRYPTO PAIRS:", len(markets))
+        print("\nTOP 30 BY VOLUME")
+        print("-" * 40)
+
+        for market in markets[:30]:
+            print(
+                market["symbol"],
+                f'{market["volume"]:,.0f} USDT'
+            )
+
+        print("\nUNIVERSE TEST FINISHED")
+
+    except Exception as error:
+        print("ERROR:", error)
+
+
+if __name__ == "__main__":
+    main()
