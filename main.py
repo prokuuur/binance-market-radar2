@@ -1,22 +1,27 @@
-
 import requests
 
-print("BINANCE RADAR TEST")
-print("=" * 35)
+print("BINANCE RADAR - NETWORK TEST")
 
-tests = {
-    "FUTURES PING": "https://fapi.binance.com/fapi/v1/ping",
-    "FUTURES TIME": "https://fapi.binance.com/fapi/v1/time",
-    "SPOT PING": "https://api.binance.com/api/v3/ping",
+try:
+    ip = requests.get(
+        "https://api.ipify.org?format=json",
+        timeout=15
+    )
+    print("GITHUB SERVER IP:", ip.text)
+except Exception as e:
+    print("IP ERROR:", e)
+
+urls = {
+    "FUTURES": "https://fapi.binance.com/fapi/v1/ping",
+    "SPOT": "https://api.binance.com/api/v3/ping"
 }
 
-for name, url in tests.items():
+for name, url in urls.items():
     try:
-        response = requests.get(url, timeout=15)
-        print(f"\n{name}")
-        print("HTTP:", response.status_code)
-        print("RESPONSE:", response.text[:500])
-    except Exception as error:
-        print(f"\n{name} ERROR:", error)
+        r = requests.get(url, timeout=15)
+        print(name, "HTTP:", r.status_code)
+        print("RESPONSE:", r.text[:1000])
+    except Exception as e:
+        print(name, "ERROR:", e)
 
-print("\nTEST FINISHED")
+print("TEST FINISHED")
