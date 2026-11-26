@@ -358,6 +358,11 @@ def analyze_symbol(symbol, market):
             tp1 = price - atr
             tp2 = price - (atr * 2)
             tp3 = price - (atr * 3)
+            risk = abs(price - stop_loss)
+
+         rr1 = abs(tp1 - price) / risk
+         rr2 = abs(tp2 - price) / risk
+         rr3 = abs(tp3 - price) / risk
             return {
                 "symbol": symbol,
                 "signal": direction,
@@ -368,6 +373,9 @@ def analyze_symbol(symbol, market):
                 "tp1": tp1,
                 "tp2": tp2,
                 "tp3": tp3,
+                "risk_reward_1": rr1,
+                "risk_reward_2": rr2,
+                "risk_reward_3": rr3,
                 "rsi": rsi,
                 "ema20": ema20,
                 "ema50": ema50,
