@@ -405,6 +405,8 @@ def main():
     print("       BINANCE MARKET RADAR 2.0")
     print("       SIGNAL ENGINE 2.0")
     print("=" * 50)
+    
+        last_sent_signals = {}
 
     while True:
         try:
