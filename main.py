@@ -1,27 +1,38 @@
+
 import requests
 
-print("BINANCE RADAR - NETWORK TEST")
+print("BINANCE RADAR 2.0")
+print("OFFICIAL API DIAGNOSTICS")
+print("=" * 40)
 
-try:
-    ip = requests.get(
-        "https://api.ipify.org?format=json",
-        timeout=15
-    )
-    print("GITHUB SERVER IP:", ip.text)
-except Exception as e:
-    print("IP ERROR:", e)
+tests = {
+    "SPOT MARKET DATA ONLY":
+        "https://data-api.binance.vision/api/v3/ping",
 
-urls = {
-    "FUTURES": "https://fapi.binance.com/fapi/v1/ping",
-    "SPOT": "https://api.binance.com/api/v3/ping"
+    "SPOT STANDARD":
+        "https://api.binance.com/api/v3/ping",
+
+    "FUTURES PING":
+        "https://fapi.binance.com/fapi/v1/ping",
+
+    "FUTURES TIME":
+        "https://fapi.binance.com/fapi/v1/time",
 }
 
-for name, url in urls.items():
-    try:
-        r = requests.get(url, timeout=15)
-        print(name, "HTTP:", r.status_code)
-        print("RESPONSE:", r.text[:1000])
-    except Exception as e:
-        print(name, "ERROR:", e)
+for name, url in tests.items():
+    print(f"\n{name}")
 
-print("TEST FINISHED")
+    try:
+        response = requests.get(
+            url,
+            timeout=15,
+            headers={"User-Agent": "BinanceMarketRadar/2.0"}
+        )
+
+        print("HTTP:", response.status_code)
+        print("DATA:", response.text[:500])
+
+    except Exception as error:
+        print("ERROR:", str(error))
+
+print("\nDIAGNOSTICS FINISHED")
