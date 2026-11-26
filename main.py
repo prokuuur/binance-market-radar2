@@ -396,7 +396,7 @@ def print_signal(item):
     )
 
     print(message)
-    telegram_send(message)
+    return telegram_send(message)
 
 
 
@@ -451,11 +451,21 @@ def main():
 
             print("\n========== TOP SIGNALS ==========")
 
+            
             if not results:
                 print("No qualified signals found.")
 
             for item in results[:TOP_SIGNALS]:
-                print_signal(item)
+                symbol = item["symbol"]
+                signal = item["signal"]
+
+                if last_sent_signals.get(symbol) != signal:
+                    sent = print_signal(item)
+
+                    if sent:
+                        last_sent_signals[symbol] = signal
+
+
 
             print(
                 f"\nScan completed. "
