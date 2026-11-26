@@ -375,9 +375,10 @@ def analyze_symbol(symbol, market):
         return None
 
 
+
 def print_signal(item):
-    print(
-        f"\n{item['symbol']} | {item['signal']}"
+    message = (
+        f"\n{item['symbol']} | {item['signal']}\n"
         f"\nRating: {item['rating']}"
         f"\nScore: {item['score']}/100"
         f"\nPrice: {item['price']}"
@@ -393,6 +394,10 @@ def print_signal(item):
         f"\nReasons: {', '.join(item['reasons'])}"
         "\n--------------------------------"
     )
+
+    print(message)
+    telegram_send(message)
+
 
 
 def main():
