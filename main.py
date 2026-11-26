@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ==========================================
 # BINANCE MARKET RADAR 2.0
+# SIGNAL ENGINE 2.0
 # ==========================================
 
 BASE_URL = "https://data-api.binance.vision"
@@ -13,8 +14,10 @@ BASE_URL = "https://data-api.binance.vision"
 TIMEFRAME = "15m"
 KLINE_LIMIT = 150
 MAX_WORKERS = 10
+TOP_SIGNALS = 10
 
 MIN_QUOTE_VOLUME = 5_000_000
+MIN_SCORE = 65
 SCAN_INTERVAL = 60
 
 EXCLUDED_BASES = {
@@ -42,23 +45,18 @@ def get_json(endpoint, params=None):
 def get_symbols():
     data = get_json("/api/v3/exchangeInfo")
 
-    symbols = []
-
-    for item in data["symbols"]:
-        if (
-            item["status"] == "TRADING"
-            and item["quoteAsset"] == "USDT"
-            and item["baseAsset"] not in EXCLUDED_BASES
-            and item["isSpotTradingAllowed"]
-        ):
-            symbols.append(item["symbol"])
-
-    return symbols
+    return [
+        item["symbol"]
+        for item in data["symbols"]
+        if item["status"] == "TRADING"
+        and item["quoteAsset"] == "USDT"
+        and item["baseAsset"] not in EXCLUDED_BASES
+        and item["isSpotTradingAllowed"]
+    ]
 
 
 def get_market_data():
     data = get_json("/api/v3/ticker/24hr")
-
     markets = {}
 
     for item in data:
@@ -84,25 +82,36 @@ def get_klines(symbol):
         }
     )
 
-    closes = [float(candle[4]) for candle in data]
-    volumes = [float(candle[5]) for candle in data]
+    # Используем только закрытые свечи
+    data = data[:-1]
 
-    return closes, volumes
+    highs = [float(x[2]) for x in data]
+    lows = [float(x[3]) for x in data]
+    closes = [float(x[4]) for x in data]
+    volumes = [float(x[5]) for x in data]
+
+    return highs, lows, closes, volumes
 
 
-def ema(values, period):
+def ema_series(values, period):
     if len(values) < period:
-        return None
+        return []
 
     multiplier = 2 / (period + 1)
 
-    result = sum(values[:period]) / period
+    result = [
+        None
+    ] * (period - 1)
+
+    current = sum(values[:period]) / period
+    result.append(current)
 
     for value in values[period:]:
-        result = (
+        current = (
             value * multiplier
-            + result * (1 - multiplier)
+            + current * (1 - multiplier)
         )
+        result.append(current)
 
     return result
 
@@ -135,84 +144,214 @@ def calculate_rsi(values, period=14):
         return 100
 
     rs = avg_gain / avg_loss
-
     return 100 - (100 / (1 + rs))
 
 
 def calculate_macd(values):
-    if len(values) < 35:
+    fast = ema_series(values, 12)
+    slow = ema_series(values, 26)
+
+    if not fast or not slow:
         return None, None
 
-    fast = ema(values, 12)
-    slow = ema(values, 26)
+    macd_values = []
 
-    if fast is None or slow is None:
+    for f, s in zip(fast, slow):
+        if f is not None and s is not None:
+            macd_values.append(f - s)
+
+    signal_values = ema_series(macd_values, 9)
+
+    if not signal_values or signal_values[-1] is None:
         return None, None
 
-    return fast - slow, "calculated"
+    macd = macd_values[-1]
+    signal = signal_values[-1]
+
+    return macd, macd - signal
+
+
+def calculate_atr(highs, lows, closes, period=14):
+    if len(closes) <= period:
+        return None
+
+    true_ranges = []
+
+    for i in range(1, len(closes)):
+        tr = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1])
+        )
+        true_ranges.append(tr)
+
+    atr = sum(true_ranges[:period]) / period
+
+    for value in true_ranges[period:]:
+        atr = (
+            atr * (period - 1) + value
+        ) / period
+
+    return atr
 
 
 def analyze_symbol(symbol, market):
     try:
-        closes, volumes = get_klines(symbol)
+        highs, lows, closes, volumes = get_klines(symbol)
 
         if len(closes) < 60:
             return None
 
-        current_price = closes[-1]
+        price = closes[-1]
 
-        ema20 = ema(closes, 20)
-        ema50 = ema(closes, 50)
+        ema20_values = ema_series(closes, 20)
+        ema50_values = ema_series(closes, 50)
+
+        ema20 = ema20_values[-1]
+        ema50 = ema50_values[-1]
+
         rsi = calculate_rsi(closes)
+        macd, histogram = calculate_macd(closes)
+        atr = calculate_atr(highs, lows, closes)
 
-        macd, _ = calculate_macd(closes)
-
-        if None in (ema20, ema50, rsi, macd):
+        if any(
+            x is None
+            for x in (ema20, ema50, rsi, macd, histogram, atr)
+        ):
             return None
 
-        signal = None
-        score = 0
-
-        if (
-            current_price > ema20 > ema50
-            and 50 < rsi < 70
-            and macd > 0
-        ):
-            signal = "LONG"
-            score = 3
-
-        elif (
-            current_price < ema20 < ema50
-            and 30 < rsi < 50
-            and macd < 0
-        ):
-            signal = "SHORT"
-            score = 3
-
-        if signal is None:
+        if price <= 0:
             return None
 
-        return {
-            "symbol": symbol,
-            "signal": signal,
-            "price": current_price,
-            "rsi": rsi,
-            "ema20": ema20,
-            "ema50": ema50,
-            "macd": macd,
-            "volume": market["volume"],
-            "change": market["change"],
-            "score": score
-        }
+        atr_percent = atr / price * 100
+
+        avg_volume = sum(volumes[-21:-1]) / 20
+
+        if avg_volume <= 0:
+            return None
+
+        volume_ratio = volumes[-1] / avg_volume
+
+        ema_slope = (
+            ema20_values[-1] - ema20_values[-6]
+        ) / ema20_values[-6] * 100
+
+        directions = []
+
+        if price > ema20 > ema50:
+            directions.append("LONG")
+
+        if price < ema20 < ema50:
+            directions.append("SHORT")
+
+        for direction in directions:
+            score = 0
+            reasons = []
+
+            if direction == "LONG":
+                if price > ema20 > ema50:
+                    score += 25
+                    reasons.append("EMA trend bullish")
+
+                if 50 < rsi < 70:
+                    score += 20
+                    reasons.append("RSI bullish")
+
+                if macd > 0 and histogram > 0:
+                    score += 20
+                    reasons.append("MACD bullish")
+
+                if price > ema20:
+                    score += 10
+                    reasons.append("Price above EMA20")
+
+                if ema_slope > 0:
+                    score += 10
+                    reasons.append("EMA20 rising")
+
+            else:
+                if price < ema20 < ema50:
+                    score += 25
+                    reasons.append("EMA trend bearish")
+
+                if 30 < rsi < 50:
+                    score += 20
+                    reasons.append("RSI bearish")
+
+                if macd < 0 and histogram < 0:
+                    score += 20
+                    reasons.append("MACD bearish")
+
+                if price < ema20:
+                    score += 10
+                    reasons.append("Price below EMA20")
+
+                if ema_slope < 0:
+                    score += 10
+                    reasons.append("EMA20 falling")
+
+            if volume_ratio >= 1.2:
+                score += 15
+                reasons.append("Volume confirmed")
+
+            if score < MIN_SCORE:
+                continue
+
+            rating = (
+                "STRONG" if score >= 80
+                else "CANDIDATE"
+            )
+
+            return {
+                "symbol": symbol,
+                "signal": direction,
+                "rating": rating,
+                "score": score,
+                "price": price,
+                "rsi": rsi,
+                "ema20": ema20,
+                "ema50": ema50,
+                "macd": macd,
+                "histogram": histogram,
+                "atr": atr,
+                "atr_percent": atr_percent,
+                "volume_ratio": volume_ratio,
+                "volume": market["volume"],
+                "change": market["change"],
+                "reasons": reasons
+            }
+
+        return None
 
     except Exception as error:
         logging.warning("%s: %s", symbol, error)
         return None
 
 
+def print_signal(item):
+    print(
+        f"\n{item['symbol']} | {item['signal']}"
+        f"\nRating: {item['rating']}"
+        f"\nScore: {item['score']}/100"
+        f"\nPrice: {item['price']}"
+        f"\nRSI: {item['rsi']:.2f}"
+        f"\nEMA20: {item['ema20']:.8f}"
+        f"\nEMA50: {item['ema50']:.8f}"
+        f"\nMACD: {item['macd']:.8f}"
+        f"\nMACD histogram: {item['histogram']:.8f}"
+        f"\nATR: {item['atr_percent']:.2f}%"
+        f"\nVolume ratio: {item['volume_ratio']:.2f}x"
+        f"\n24h volume: {item['volume']:,.0f} USDT"
+        f"\n24h change: {item['change']:.2f}%"
+        f"\nReasons: {', '.join(item['reasons'])}"
+        "\n--------------------------------"
+    )
+
+
 def main():
     print("=" * 50)
     print("       BINANCE MARKET RADAR 2.0")
+    print("       SIGNAL ENGINE 2.0")
     print("=" * 50)
 
     while True:
@@ -256,25 +395,18 @@ def main():
                 reverse=True
             )
 
-            print("\n========== SIGNALS ==========")
+            print("\n========== TOP SIGNALS ==========")
 
             if not results:
-                print("No signals found.")
+                print("No qualified signals found.")
 
-            for item in results:
-                print(
-                    f"\n{item['symbol']} | {item['signal']}"
-                    f"\nPrice: {item['price']}"
-                    f"\nRSI: {item['rsi']:.2f}"
-                    f"\nEMA20: {item['ema20']:.6f}"
-                    f"\nEMA50: {item['ema50']:.6f}"
-                    f"\nMACD: {item['macd']:.6f}"
-                    f"\n24h volume: {item['volume']:,.0f} USDT"
-                    f"\n24h change: {item['change']:.2f}%"
-                    "\n-----------------------------"
-                )
+            for item in results[:TOP_SIGNALS]:
+                print_signal(item)
 
-            print("\nScan completed.")
+            print(
+                f"\nScan completed. "
+                f"Qualified signals: {len(results)}"
+            )
 
         except Exception as error:
             logging.error("Main error: %s", error)
