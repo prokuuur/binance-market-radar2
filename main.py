@@ -1,38 +1,43 @@
 
 import requests
 
+BASE = "https://data-api.binance.vision"
+
 print("BINANCE RADAR 2.0")
-print("OFFICIAL API DIAGNOSTICS")
-print("=" * 40)
+print("MARKET DATA TEST")
 
-tests = {
-    "SPOT MARKET DATA ONLY":
-        "https://data-api.binance.vision/api/v3/ping",
+def check_price(symbol):
+    url = BASE + "/api/v3/ticker/price"
+    r = requests.get(
+        url,
+        params={"symbol": symbol},
+        timeout=15
+    )
+    print(symbol, "HTTP:", r.status_code)
+    print(r.text[:300])
 
-    "SPOT STANDARD":
-        "https://api.binance.com/api/v3/ping",
+def check_klines():
+    url = BASE + "/api/v3/klines"
+    params = {
+        "symbol": "BTCUSDT",
+        "interval": "5m",
+        "limit": 5
+    }
 
-    "FUTURES PING":
-        "https://fapi.binance.com/fapi/v1/ping",
+    r = requests.get(url, params=params, timeout=15)
+    print("\nBTCUSDT CANDLES")
+    print("HTTP:", r.status_code)
+    print(r.text[:1500])
 
-    "FUTURES TIME":
-        "https://fapi.binance.com/fapi/v1/time",
-}
-
-for name, url in tests.items():
-    print(f"\n{name}")
-
+for symbol in ["BTCUSDT", "ETHUSDT", "BNBUSDT"]:
     try:
-        response = requests.get(
-            url,
-            timeout=15,
-            headers={"User-Agent": "BinanceMarketRadar/2.0"}
-        )
+        check_price(symbol)
+    except Exception as e:
+        print(symbol, "ERROR:", e)
 
-        print("HTTP:", response.status_code)
-        print("DATA:", response.text[:500])
+try:
+    check_klines()
+except Exception as e:
+    print("KLINES ERROR:", e)
 
-    except Exception as error:
-        print("ERROR:", str(error))
-
-print("\nDIAGNOSTICS FINISHED")
+print("\nTEST FINISHED")
