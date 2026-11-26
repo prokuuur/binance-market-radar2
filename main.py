@@ -1,16 +1,13 @@
 import requests
 
-URL = "https://fapi.binance.com"
+urls = {
+    "FUTURES": "https://fapi.binance.com/fapi/v1/ping",
+    "SPOT": "https://api.binance.com/api/v3/ping"
+}
 
-def main():
-    data = requests.get(URL + "/fapi/v1/ticker/24hr").json()
-    coins = [x for x in data if x["symbol"].endswith("USDT")]
-
-    coins.sort(key=lambda x: abs(float(x["priceChangePercent"])), reverse=True)
-
-    print("BINANCE MARKET RADAR 2.0")
-    for coin in coins[:20]:
-        print(coin["symbol"], coin["priceChangePercent"] + "%")
-
-if __name__ == "__main__":
-    main()
+for name, url in urls.items():
+    try:
+        r = requests.get(url, timeout=15)
+        print(name, "HTTP", r.status_code, r.text)
+    except Exception as e:
+        print(name, "ERROR", str(e))
