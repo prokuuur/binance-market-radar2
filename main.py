@@ -348,21 +348,22 @@ def analyze_symbol(symbol, market):
                 "STRONG" if score >= 80
                 else "CANDIDATE"
             )
-        if direction == "LONG":
-            stop_loss = price - (atr * 1.5)
-            tp1 = price + atr
-            tp2 = price + (atr * 2)
-            tp3 = price + (atr * 3)
-        else:
-            stop_loss = price + (atr * 1.5)
-            tp1 = price - atr
-            tp2 = price - (atr * 2)
-            tp3 = price - (atr * 3)
+            if direction == "LONG":
+                stop_loss = price - (atr * 1.5)
+                tp1 = price + atr
+                tp2 = price + (atr * 2)
+                tp3 = price + (atr * 3)
+            else:
+                stop_loss = price + (atr * 1.5)
+                tp1 = price - atr
+                tp2 = price - (atr * 2)
+                tp3 = price - (atr * 3)
+
             risk = abs(price - stop_loss)
 
-         rr1 = abs(tp1 - price) / risk
-         rr2 = abs(tp2 - price) / risk
-         rr3 = abs(tp3 - price) / risk
+            rr1 = abs(tp1 - price) / risk
+            rr2 = abs(tp2 - price) / risk
+            rr3 = abs(tp3 - price) / risk
             return {
                 "symbol": symbol,
                 "signal": direction,
