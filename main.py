@@ -194,7 +194,7 @@ def calculate_atr(highs, lows, closes, period=14):
 
     return atr
 
-
+    
 def analyze_symbol(symbol, market):
     try:
         highs, lows, closes, volumes = get_klines(symbol)
