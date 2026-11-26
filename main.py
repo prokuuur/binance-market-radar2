@@ -31,6 +31,53 @@ logging.basicConfig(
     format="%(asctime)s | %(message)s"
 )
 
+# ==========================================
+# TELEGRAM CONFIGURATION
+# ==========================================
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+
+# ==========================================
+# TELEGRAM SEND
+# ==========================================
+
+def telegram_send(message: str) -> bool:
+
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        logging.error("Telegram credentials missing")
+        return False
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "disable_web_page_preview": True
+    }
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=15
+        )
+
+        response.raise_for_status()
+        result = response.json()
+
+        if result.get("ok"):
+            logging.info("Telegram message sent successfully")
+            return True
+
+        logging.error("Telegram API error: %s", result)
+        return False
+
+    except requests.exceptions.RequestException as error:
+        logging.error("Telegram sending error: %s", error)
+        return False
+
 
 def get_json(endpoint, params=None):
     response = requests.get(
@@ -414,5 +461,13 @@ def main():
         time.sleep(SCAN_INTERVAL)
 
 
+
 if __name__ == "__main__":
+    telegram_send(
+        "BINANCE MARKET RADAR 2.0\n\n"
+        "Telegram connection successful!\n"
+        "Radar is starting."
+    )
+
     main()
+
