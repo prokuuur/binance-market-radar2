@@ -13,7 +13,9 @@ EXCLUDED_BASES = {
     "AAPL", "TSLA", "NVDA", "MSFT",
     "AMZN", "GOOGL", "META", "COIN",
     "MSTR", "CRCL", "HOOD", "INTC",
-    "QQQ", "SPY", "MARA", "SOUN"
+    "QQQ", "SPY", "MARA", "SOUN",
+    "SOXLB", "NVDAB", "SPCXB", "MMT",
+    "XAUT", "PAXG", "RLUSD"
 }
 
 def get_crypto_universe():
