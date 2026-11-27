@@ -548,12 +548,43 @@ def main():
 
 
 
+
+def check_binance(label, url):
+    print(f"\n--- {label} ---")
+
+    try:
+        response = requests.get(url, timeout=15)
+        print("HTTP STATUS:", response.status_code)
+        print("RESPONSE:", response.text[:350])
+
+    except Exception as error:
+        print("CONNECTION ERROR:", error)
+
+
 if __name__ == "__main__":
-    telegram_send(
-        "BINANCE MARKET RADAR 2.0\n\n"
-        "Telegram connection successful!\n"
-        "Radar is starting."
+    print("BINANCE API DIAGNOSTIC")
+    print("GitHub Actions connectivity test")
+
+    check_binance(
+        "SPOT PING",
+        "https://api.binance.com/api/v3/ping"
     )
 
-    main()
+    check_binance(
+        "SPOT MARKET DATA",
+        "https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT"
+    )
+
+    check_binance(
+        "FUTURES PING",
+        "https://fapi.binance.com/fapi/v1/ping"
+    )
+
+    check_binance(
+        "FUTURES MARKET DATA",
+        "https://fapi.binance.com/fapi/v1/exchangeInfo"
+    )
+
+    print("\nDIAGNOSTIC COMPLETED")
+
 
