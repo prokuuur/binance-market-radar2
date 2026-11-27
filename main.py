@@ -89,21 +89,35 @@ def get_json(endpoint, params=None):
     return response.json()
 
 
+
+FUTURES_BASE_URL = "https://fapi.binance.com"
+
+
+def get_futures_json(endpoint, params=None):
+    response = requests.get(
+        FUTURES_BASE_URL + endpoint,
+        params=params,
+        timeout=15
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_symbols():
-    data = get_json("/api/v3/exchangeInfo")
+    data = get_futures_json("/fapi/v1/exchangeInfo")
 
     return [
         item["symbol"]
         for item in data["symbols"]
         if item["status"] == "TRADING"
+        and item["contractType"] == "PERPETUAL"
         and item["quoteAsset"] == "USDT"
         and item["baseAsset"] not in EXCLUDED_BASES
-        and item["isSpotTradingAllowed"]
     ]
 
 
 def get_market_data():
-    data = get_json("/api/v3/ticker/24hr")
+    data = get_futures_json("/fapi/v1/ticker/24hr")
     markets = {}
 
     for item in data:
@@ -120,8 +134,8 @@ def get_market_data():
 
 
 def get_klines(symbol):
-    data = get_json(
-        "/api/v3/klines",
+    data = get_futures_json(
+        "/fapi/v1/klines",
         {
             "symbol": symbol,
             "interval": TIMEFRAME,
@@ -129,7 +143,7 @@ def get_klines(symbol):
         }
     )
 
-    # Используем только закрытые свечи
+    # Только закрытые свечи
     data = data[:-1]
 
     highs = [float(x[2]) for x in data]
@@ -138,6 +152,7 @@ def get_klines(symbol):
     volumes = [float(x[5]) for x in data]
 
     return highs, lows, closes, volumes
+
 
 
 def ema_series(values, period):
