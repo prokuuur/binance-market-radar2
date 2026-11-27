@@ -4,6 +4,7 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+from stats import save_signal
 # ==========================================
 # BINANCE MARKET RADAR 2.0
 # SIGNAL ENGINE 2.0
