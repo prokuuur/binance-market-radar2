@@ -94,14 +94,24 @@ def get_json(endpoint, params=None):
 FUTURES_BASE_URL = "https://fapi.binance.com"
 
 
+
 def get_futures_json(endpoint, params=None):
     response = requests.get(
         FUTURES_BASE_URL + endpoint,
         params=params,
         timeout=15
     )
+
+    if response.status_code != 200:
+        logging.error(
+            "BINANCE ERROR %s: %s",
+            response.status_code,
+            response.text[:1000]
+        )
+
     response.raise_for_status()
     return response.json()
+
 
 
 def get_symbols():
