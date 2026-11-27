@@ -504,11 +504,25 @@ def main():
                 symbol = item["symbol"]
                 signal = item["signal"]
 
-                if last_sent_signals.get(symbol) != signal:
-                    sent = print_signal(item)
+                
+            if last_sent_signals.get(symbol) != signal:
+                sent = print_signal(item)
 
-                    if sent:
-                        last_sent_signals[symbol] = signal
+                if sent:
+                    try:
+                        signal_id = save_signal(item)
+                        logging.info(
+                            "Signal saved to database: %s",
+                            signal_id
+                        )
+                    except Exception as error:
+                        logging.error(
+                            "Statistics save error: %s",
+                            error
+                        )
+
+                    last_sent_signals[symbol] = signal
+
 
 
 
